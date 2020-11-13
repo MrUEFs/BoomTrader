@@ -3,17 +3,14 @@ using Binance.Net.Enums;
 using Binance.Net.Interfaces.SubClients.Futures;
 using Binance.Net.Objects.Futures.FuturesData;
 using Binance.Net.Objects.Futures.MarketData;
-using Binance.Net.SocketSubClients;
 using BoomTrader_2.Settings;
 using CryptoExchange.Net.Objects;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
-using System.Management;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -49,7 +46,7 @@ namespace BoomTrader_2
         public Tuple<bool, string, string> License { get; set; }
         public BinanceClient client = new BinanceClient();
         private int baskets = 2;
-        
+
         public IniFile settings = new IniFile("settings.ini");
         public IniFile work = new IniFile("work.ini");
 
@@ -64,7 +61,7 @@ namespace BoomTrader_2
         private BinanceSocketClient socketClient { get; set; }
 
         private bool NeedToClose = false;
-        private IBinanceClientFuturesUsdt futures { get; set; } 
+        private IBinanceClientFuturesUsdt futures { get; set; }
         public TraderBot(string api, string secret)
         {
             try
@@ -78,13 +75,13 @@ namespace BoomTrader_2
                 this.Telegram = new Telegram();
                 this.TrailingEnabled = false;
                 this.client.SetApiCredentials(this.ApiKey, this.SecretKey);
-                this.socketClient = new BinanceSocketClient();
-                this.socketClient.SetApiCredentials(this.ApiKey, this.SecretKey);
+                //this.socketClient = new BinanceSocketClient();
+                //this.socketClient.SetApiCredentials(this.ApiKey, this.SecretKey);
                 this.futures = this.client.FuturesUsdt;
                 Exinfo = futures.System.GetExchangeInfo().Data;
+
                 
-                var socketClient = new BinanceSocketClient();
-                
+
             }
             catch (Exception e)
             {
@@ -110,9 +107,9 @@ namespace BoomTrader_2
         public void GetBalances()
         {
 
-            
-            
-            
+
+
+
             try
             {
                 var balances = futures.Account.GetBalance().Data.ToList();
@@ -126,7 +123,7 @@ namespace BoomTrader_2
             {
                 //Log.Add("Error update balance", Color.Orange);
             }
-            
+
         }
 
         public void Work()
@@ -137,22 +134,7 @@ namespace BoomTrader_2
             while (Status)
             {
 
-                /*if (Entered)
-                {
-                    try
-                    {
-                        AveragingSpread = Convert.ToDecimal(work.Read("EntrySpread", "ORDERS")) - cfg.averageBefore;
-                    }
-                    catch (Exception)
-                    {
-
-                        AveragingSpread = cfg.spreadEntry - cfg.averageBefore;
-                    }
-                }*/
-
-
-
-
+              
                 if (!Status) break;
 
 
@@ -174,11 +156,11 @@ namespace BoomTrader_2
                         var postemp = futures.GetPositionInformation();
                         if (postemp.Success)
                             positions = postemp.Data.ToList();
-                        
+
 
                         foreach (var pos in positions.ToList())
                         {
-                            if (pos.Symbol == it)
+                            if (pos.Symbol == it && pos.Quantity != 0)
                             {
                                 entry = pos.EntryPrice;
                                 if (pos.EntryPrice * pos.Quantity != 0)
@@ -192,7 +174,7 @@ namespace BoomTrader_2
                     }
                     catch (NullReferenceException)
                     {
-                        Log.Add("Error get symbol prices", Color.Red, send:false);
+                        Log.Add("Error get symbol prices", Color.Red, send: false);
                     }
 
                     var list = new List<string>();
@@ -229,15 +211,15 @@ namespace BoomTrader_2
 
                     }
 
-                    if (entry>0 && !list.Contains(it))
+                    if (entry > 0 && !list.Contains(it))
                     {
-                        Percents.Add(new PercentItem { Symbol = it, Entry = entry, Price = price, Percent = percent, Start=entry });
+                        Percents.Add(new PercentItem { Symbol = it, Entry = entry, Price = price, Percent = percent, Start = entry });
                     }
 
 
 
 
-                    //quotes.Add(QuotesItem.Add(it.ToString(), percent, mark));
+                    
 
                 }
                 if (Validation(cnt))
@@ -301,7 +283,7 @@ namespace BoomTrader_2
                     }));
                 }
 
-                
+
 
 
                 decimal s1 = 0;
@@ -451,7 +433,7 @@ namespace BoomTrader_2
                     {
                         //Log.Add(Weights.ToString(), Color.Black);
                         NeedToClose = BasketAlignment();
-                            
+
 
                     }
                 }
@@ -479,7 +461,7 @@ namespace BoomTrader_2
         {
             WebCallResult<BinanceFuturesInitialLeverageChangeResult> lever;//= client.ChangeInitialLeverage(Pair, Leverage);
             bool success = false;
-            
+
             while (!success)
             {
                 if (Leverage == 0)
@@ -491,14 +473,14 @@ namespace BoomTrader_2
                 lever = futures.ChangeInitialLeverage(Pair, Leverage);
                 if (lever.Success)
                 {
-                    
+
                     Log.Add(string.Format("For {0} set leverage {1}, max: {2} ", lever.Data.Symbol, lever.Data.Leverage, lever.Data.MaxNotionalValue), Color.Black, send: false);
                     success = true;
-                    
-                    
+
+
                 }
                 Leverage -= 5;
-                
+
             }
         }
 
@@ -539,9 +521,9 @@ namespace BoomTrader_2
                 return false;
             }
             PercentItem PairAlign = new PercentItem();
-            if (side == OrderSide.Sell )
+            if (side == OrderSide.Sell)
             {
-                if (temp.Count!=0)
+                if (temp.Count != 0)
                     PairAlign = temp[0];
                 else
                 {
@@ -599,9 +581,9 @@ namespace BoomTrader_2
                 send = false;
             }
 
-            
 
-            Log.Add(message, Color.Blue, send:send);
+
+            Log.Add(message, Color.Blue, send: send);
             return false;
         }
 
@@ -610,20 +592,20 @@ namespace BoomTrader_2
             Busy = true;
             PercentItem[] tempPercents = new PercentItem[2];
             List<PercentItem> temp = new List<PercentItem>();
-            string sideName = "";
+            
             bool success = false;
-            
+
             var msg = "Averaging";
-            
+
 
             decimal quantity = 0;
-            
-            
+
+
             OrderSide side = OrderSide.Buy;
             PositionSide positionSide = PositionSide.Both;
-            var OrderVolume = Cfg.volume / 2 / Cfg.buyCount ;
+            var OrderVolume = Cfg.volume / 2 / Cfg.buyCount;
 
-            
+
             foreach (var pos in Percents.ToList())
             {
                 if (pos.Long)
@@ -638,7 +620,7 @@ namespace BoomTrader_2
             {
                 Log.Debug("no long");
             }
-            
+
             foreach (var pos in Percents.ToList())
             {
                 if (pos.Short)
@@ -658,37 +640,37 @@ namespace BoomTrader_2
             decimal Long = 0;
             foreach (var i in futures.GetPositionInformation().Data.ToList())
             {
-                foreach (var item in tempPercents )
+                foreach (var item in tempPercents)
                 {
                     if (i.Symbol == item.Symbol && item != null)
                     {
                         if (i.Quantity > 0)
                         {
                             Long = i.UnrealizedPnL;
-                            
+
                         }
-                            
+
                         else if (i.Quantity < 0)
                         {
                             Short = i.UnrealizedPnL;
-                            
+
                         }
-                            
+
                     }
                 }
             }
             PercentItem PairAverage = new PercentItem();
-            if (Math.Max(Short,Long) == Long)
+            if (Math.Max(Short, Long) == Long)
             {
                 PairAverage = tempPercents[0];
-                sideName = "long";
+                
                 side = OrderSide.Buy;
                 positionSide = PositionSide.Long;
             }
             else
             {
                 PairAverage = tempPercents[1];
-                sideName = "short";
+                
                 side = OrderSide.Sell;
                 positionSide = PositionSide.Short;
             }
@@ -710,12 +692,12 @@ namespace BoomTrader_2
                     precision = it.QuantityPrecision;
 
             }
-            quantity = decimal.Round(OrderVolume / price , precision);
-            WebCallResult <BinanceFuturesPlacedOrder> order = null;
+            quantity = decimal.Round(OrderVolume / price, precision);
+            WebCallResult<BinanceFuturesPlacedOrder> order = null;
             //var quantity = decimal.Round(Math.Abs(Weights) / price, precision);
 
             string message = "";
-            
+
             if (quantity > 0)
             {
                 order = futures.Order.PlaceOrder(PairAverage.Symbol, side, OrderType.Market, quantity, positionSide);
@@ -723,21 +705,21 @@ namespace BoomTrader_2
 
                 if (order.Success)
                 {
-                    message = msg+": " + sideName + " " + order.Data.Symbol + " quantity: " + order.Data.OriginalQuantity;
-          
+                    message = msg + ": " + positionSide + " " + order.Data.Symbol + " quantity: " + order.Data.OriginalQuantity;
+
                     success = true;
                 }
                 else
                 {
-                    message = msg+": Error " + order.Error.Message;
-                    
+                    message = msg + ": Error " + order.Error.Message;
+
                 }
 
             }
             else
             {
                 message = msg + ": failed to perform the averaging";
-                
+
             }
 
 
@@ -770,7 +752,7 @@ namespace BoomTrader_2
 
             Busy = false;
 
-            
+
         }
 
 
@@ -852,17 +834,10 @@ namespace BoomTrader_2
 
             }
 
-            foreach (var it in SelectedSymbols)
-            {
-                socketClient.FuturesUsdt.SubscribeToAggregatedTradeUpdates(it,(data) => {
-                    
-                   
-
-                });
-            }
-
             
-             
+
+
+
 
             try
             {
@@ -904,13 +879,17 @@ namespace BoomTrader_2
 
                         foreach (var pos in futures.GetPositionInformation().Data.ToList())
                         {
-                            if (pos.Symbol == symbol)
+                            if (pos.Symbol == symbol && pos.Quantity != 0)
                             {
-                                start = pos.EntryPrice;
-                                if (pos.Quantity > 0)
-                                    Long = true;
-                                else if (pos.Quantity < 0)
-                                    Short = true;
+                                
+                                    if (pos.PositionSide == PositionSide.Long)
+                                        Long = true;
+                                    else if (pos.PositionSide == PositionSide.Short)
+                                        Short = true;
+                                    
+                                    start = pos.EntryPrice;
+                                
+                                
                             }
                         }
 
@@ -920,7 +899,7 @@ namespace BoomTrader_2
                         if (price != 0 && start != 0)
                             percent = 100 / (start / price) - 100;
 
-                        Percents.Add(new PercentItem { Symbol = symbol, Start = start, Percent = percent, Price = price, Long = Long, Short = Short });
+                        Percents.Add(new PercentItem { Symbol = symbol, Start = start,Percent = percent, Price = price, Long = Long, Short = Short });
                     }
 
                 }
@@ -960,7 +939,7 @@ namespace BoomTrader_2
             if (NeedToClose)
                 CloseAllPositions(true);
 
-            
+
 
             try
             {
@@ -990,6 +969,8 @@ namespace BoomTrader_2
                 volume = Cfg.volume;
             }
 
+            CloseProfit = volume / 100 * Cfg.closeProfit;
+
             try
             {
                 AverageDone = Convert.ToInt32(work.Read("AveragingDone", "ORDERS"));
@@ -998,7 +979,9 @@ namespace BoomTrader_2
             {
                 AverageDone = 0;
             }
-             //decimal.Round((volume - Cfg.volume) / multivol);
+            //decimal.Round((volume - Cfg.volume) / multivol);
+
+            
 
             if ((CalculatedPnL >= CloseProfit || TrailingEnabled) && CalculatedPnL > 0 && Validation(Percents.Count()))
             {
@@ -1048,7 +1031,7 @@ namespace BoomTrader_2
                     CloseAllPositions(true);
                 }
             }
-            
+
             if (TrailingEnabled && !Busy && Validation(Percents.Count()))
             {
 
@@ -1103,7 +1086,7 @@ namespace BoomTrader_2
                 {
                     for (var i = 0; i < Cfg.buyCount; i++)
                     {
-                        
+
                         s1 += Percents[i].Percent;
                         ts.Add(new PercentItem { Symbol = Percents[i].Symbol, Start = Percents[i].Start, Entry = Percents[i].Entry, Percent = Percents[i].Percent, Price = Percents[i].Price, Long = true });
                     }
@@ -1111,7 +1094,7 @@ namespace BoomTrader_2
 
                     for (var i = Percents.Count - 1; i > (Percents.Count - 1 - Cfg.sellCount); i--)
                     {
-                        
+
                         s2 += Percents[i].Percent;
                         ts.Add(new PercentItem { Symbol = Percents[i].Symbol, Start = Percents[i].Start, Entry = Percents[i].Entry, Percent = Percents[i].Percent, Price = Percents[i].Price, Short = true });
                     }
@@ -1256,141 +1239,7 @@ namespace BoomTrader_2
             }
         }
 
-        private void Averaging(List<PercentItem> percents, bool trand = false)
-        {
-            try
-            {
-                Busy = true;
-                var msg = "Averaging";
-                if (trand)
-                {
-                    msg = "Trand averaging";
-                }
-
-                decimal quantity = 0;
-                int success = 0;
-                string type = "";
-                decimal svol = 0;
-                OrderSide side = OrderSide.Buy;
-                var OrderVolume = Cfg.volume;
-                PositionSide positionSide = PositionSide.Both;
-                foreach (var it in percents.ToList())
-                {
-
-                    var price = futures.Market.GetPrice(it.Symbol);
-
-                    foreach (var iter in Exinfo.Symbols)
-                    {
-                        if (iter.Name == it.Symbol)
-                        {
-                            quantity = decimal.Round(OrderVolume / price.Data.Price / Percents.Count, iter.QuantityPrecision);
-
-                        }
-
-
-                    }
-                    if (it.Long)
-                    {
-                        type = "long";
-                        side = OrderSide.Buy;
-                        positionSide = PositionSide.Long;
-                    }
-                    else if (it.Short)
-                    {
-                        type = "short";
-                        side = OrderSide.Sell;
-                        positionSide = PositionSide.Short;
-                    }
-
-                    //var text = msg + " " + type + " " + it.Symbol + " quantity: " + quantity + " spread: " + decimal.Round(Spread, 3);
-                    //Log.Add(text, Color.Red);
-
-
-                    var order = OpenOrder(it.Symbol, side, quantity, positionSide);
-                    if (order.Success)
-                    {
-                        var text = msg + " " + type + " " + it.Symbol + " quantity: " + quantity + " spread: " + decimal.Round(Spread, 3);
-                        Log.Add(text, Color.Black);
-                        if (Telegram.open)
-                        {
-                            Telegram.SendMsg(text);
-                        }
-                        svol += OrderVolume / Percents.Count;
-                        success++;
-                    }
-                    else
-                    {
-                        Log.Add("Averaging error: " + it.Symbol + " - " + order.Error.Message + " quantity=" + quantity, Color.Red);
-                        if (Telegram.open)
-                        {
-                            Telegram.SendMsg(it.Symbol + " - " + order.Error.Message + " quantity=" + quantity);
-                        }
-                    }
-
-
-
-                }
-
-                //AveragingSpread = Spread - cfg.averageBefore;
-                if (success == percents.Count)
-                {
-                    var volume = Convert.ToDecimal(work.Read("Volume", "ORDERS"));
-                    work.Write("EntrySpread", Spread.ToString(), "ORDERS");
-                    work.Write("AveragingPnL", CalculatedPnL.ToString(), "ORDERS");
-                    work.Write("Volume", (volume + svol).ToString(), "ORDERS");
-                    if (!trand)
-                    {
-                        if (mf.InvokeRequired)
-                        {
-                            mf.BeginInvoke((Action)(() =>
-                            {
-                                mf.averageCount.Value -= 1;
-
-                            }));
-                        }
-                        else
-                        {
-                            mf.averageCount.Value -= 1;
-
-                        }
-                        work.Write("AveragingLeft", mf.averageCount.Value.ToString(), "ORDERS");
-                    }
-                }
-                else
-                {
-                    
-                    var volume = Convert.ToDecimal(work.Read("Volume", "ORDERS"));
-                    work.Write("EntrySpread", Spread.ToString(), "ORDERS");
-                    work.Write("Volume", (volume + svol).ToString(), "ORDERS");
-
-                    if (!trand)
-                    {
-                        if (mf.InvokeRequired)
-                        {
-                            mf.BeginInvoke((Action)(() =>
-                            {
-                                mf.averageCount.Value -= 1;
-
-                            }));
-                        }
-                        else
-                        {
-                            mf.averageCount.Value -= 1;
-
-                        }
-                        work.Write("AveragingLeft", mf.averageCount.Value.ToString(), "ORDERS");
-                    }
-
-                }
-                Busy = false;
-            }
-
-            catch (Exception)
-            {
-                Busy = false;
-            }
-
-        }
+        
 
         private void GetPositions()
         {
@@ -1407,10 +1256,6 @@ namespace BoomTrader_2
                 foreach (var it in temp)
                 {
                     UnrealizedPnL += it.UnrealizedPnL;
-
-
-
-
                     foreach (var i in Percents.ToList())
                     {
 
@@ -1570,10 +1415,10 @@ namespace BoomTrader_2
                         var close = futures.Order.PlaceOrder(pos.Symbol, side, OrderType.Market, quantity, positionSide);
                         if (close.Success)
                         {
-                           
-                            
+
+
                             //        Log.Add("Order id " + it.OrderId + " closed", Color.Black);
-                               
+
                             Log.Add(string.Format("Close " + sideText + " position on " + pos.Symbol + " current spread: " + decimal.Round(Spread, 3) + " quantity: " + quantity), Color.Green);
                             empty = false;
                         }
@@ -1599,7 +1444,7 @@ namespace BoomTrader_2
             }
             else
             {
-                
+
                 Reset(reset);
                 Entered = false;
             }
@@ -1609,60 +1454,47 @@ namespace BoomTrader_2
         private WebCallResult<BinanceFuturesPlacedOrder> OpenOrder(string symbol, OrderSide side, decimal quantity, PositionSide positionSide, OrderType type = OrderType.Market)
         {
 
-            return futures.Order.PlaceOrder(symbol, side, type, quantity, positionSide, closePosition:false);
+            return futures.Order.PlaceOrder(symbol, side, type, quantity, positionSide, closePosition: false);
         }
 
         public void Reset(bool state)
         {
             //add reset settings
-            
+
             Stop();
-            
+
             Weights = 0;
             work.DeleteSection("CALC");
             work.DeleteSection("ORDERS");
             work.DeleteSection("PROFIT");
             TrailingEnabled = false;
             Entered = false;
-            
 
 
-           
+
+
             Percents.Clear();
 
             Log.Status("Coefficients are reset", Color.Blue, true);
             Log.Add("Coefficients are reset", Color.Blue);
             mf.SetVolumeHalfDepo();
-            var lic = Security.checkLicence(mf.licenceKey.Text, this.GetWallet());
-            var version = Request.GetJSON("https://license.boomtrader.info/latest-version","");
-            if (version["version"].ToString() != mf.GetVersion())
-            {
-                Log.Add("Available a new version: "+ version["version"].ToString() + "\nWhat's new:\n"+ version["description"], Color.Orange);
-                //Log.Add(version["description"].ToString(), Color.Orange);
-            }
-            if (lic.Item1)
-            {
+            
 
-                if (Cfg != null)
+
+
+            if (Cfg != null)
+            {
+                CloseProfit = Cfg.volume / 100 * Cfg.closeProfit;
+
+                if (!Cfg.noEnter && state)
                 {
-                    CloseProfit = Cfg.volume / 100 * Cfg.closeProfit;
 
-                    if (!Cfg.noEnter && state)
-                    {
-                        
-                        StartAsync();
-                        
-                    }
+                    StartAsync();
+
                 }
             }
-            else
-            {
-                MessageBox.Show(lic.Item2);
-                Log.Add(lic.Item2, Color.Red);
-                Stop();
-                License = null;
-                mf.LoginTab();
-            }
+
+
             Busy = false;
 
         }
@@ -1672,7 +1504,7 @@ namespace BoomTrader_2
         public void Stop()
         {
 
-            socketClient.UnsubscribeAll();
+            //socketClient.UnsubscribeAll();
 
             mf.tgtimer.Enabled = false;
             mf.tgtimer.Tick -= Tgtimer_Tick;
